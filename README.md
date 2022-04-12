@@ -1,24 +1,22 @@
-# vision
-
-## Project setup
+#visualization
+## koaserver
+后端代码
+### 安装依赖
+```
+npm install
+```
+### 运行后端
+```
+node ./app.js
+```
+## vision
+前端代码
+### 安装依赖
 ```
 npm install
 ```
 
-### Compiles and hot-reloads for development
+### 运行前端
 ```
 npm run serve
 ```
-
-### Compiles and minifies for production
-```
-npm run build
-```
-
-### Lints and fixes files
-```
-npm run lint
-```
-
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).

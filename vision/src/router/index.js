@@ -1,10 +1,17 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-import SellerPage from '../views/SellerPage'
-import TrendPage from "../views/TrendPage"
-import MapPage from "../views/MapPage"
-import RankPage from "../views/RankPage"
-import HotPage from "../views/HotPage"
+// 路由懒加载
+const SellerPage = ()=>import("../views/SellerPage")
+const TrendPage = ()=>import("../views/TrendPage")
+const MapPage = ()=>import("../views/MapPage")
+const RankPage = ()=>import("../views/RankPage")
+const HotPage = ()=>import("../views/HotPage")
+const StockPage = ()=>import('../views/StockPage')
+// import SellerPage from '../views/SellerPage'
+// import TrendPage from "../views/TrendPage"
+// import MapPage from "../views/MapPage"
+// import RankPage from "../views/RankPage"
+// import HotPage from "../views/HotPage"
 
 
 
@@ -31,6 +38,10 @@ const routes = [
   {
     path:"/hotpage",
     component:HotPage
+  },
+  {
+    path:"/stockpage",
+    component:StockPage
   },
 ]
 
