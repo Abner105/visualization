@@ -15,3 +15,16 @@ app.use(dataResponse)
 app.listen(8888, () => {
   console.log("8888端口正在监听~~")
 })
+
+const websocket = require('ws')
+const wss = new websocket.Server({
+  port:9998
+})
+wss.on('connection',client=>{
+  console.log('连接成功')
+  client.on('message',msg=>{
+    console.log("接收前端的数据"+msg)
+    client.send('回复前端数据')
+  })
+  client.send('服务端数据')
+})
