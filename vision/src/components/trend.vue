@@ -26,14 +26,26 @@ export default {
       titleWidth:66
     };
   },
+  created(){
+    // 在websocket中，注册获取数据的回调函数
+    this.$socket.registerCallBack('trendData',this.getData)
+  },
   mounted() {
     this.initChart();
-    this.getData();
+    // this.getData();
+    // 改造，使用websocket获取数据
+    this.$socket.send({
+      action:'getData',
+        chartName:"trend",
+        value:'',
+        socketType:'trendData'
+    })
     window.addEventListener("resize", this.screenAdapter);
     this.screenAdapter();
   },
   destroyed() {
     window.removeEventListener("resize", this.screenAdapter);
+    this.$socket.unRegisterCallBack('trendData')
   },
   methods: {
     // 初始化图表实例
@@ -72,9 +84,9 @@ export default {
       this.myChart.setOption(initOption);
     },
     // 获取后台数据,并处理数据，更新图表
-    async getData() {
-      const { data } = await this.$http.get("/trend");
-      console.log(data);
+     getData(data) {
+      // const { data } = await this.$http.get("/trend");
+      // console.log(data);
       // 处理数据
       this.xData = data.common.month;
       this.map = this.dealData(data.map.data, "map");

@@ -24,8 +24,9 @@
       }
       ws.onmessage = function(msg){
         console.log('接收数据')
-        let data = msg.data
-        recv.innerText = data
+        let data = JSON.parse(msg.data)
+        console.log(msg)
+        recv.innerText = data.action
       }
       ws.onclose=function(){
         console.log('连接关闭')
@@ -37,7 +38,11 @@
       }
     }
     send.onclick = function(){
-      ws.send('客户端的数据')
+      let data = {
+        action:"dd",
+        chartName:"map",
+      }
+      ws.send(JSON.stringify(data))
     }
   </script>
 </body>
