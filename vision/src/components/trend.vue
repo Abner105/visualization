@@ -4,7 +4,7 @@
       class="myselect"
       :options="type"
       v-model="choiceType"
-      :style="{fontSize:titleWidth+'px'}"
+      :style="themeStyle"
     />
     <div class="chart" ref="sellerChart"></div>
   </div>
@@ -12,6 +12,8 @@
 
 <script>
 import mySelect from "./mySelect.vue";
+import { mapState } from "vuex";
+import {getThemeCss} from '../utils/theme_utils'
 export default {
   components: { mySelect },
   data() {
@@ -23,40 +25,44 @@ export default {
       xData: null, // x轴数据
       choiceType: "seller", // 当前选择图表，默认是map
       type: [], // 图表类型
-      titleWidth:66
+      titleWidth: 66,
+      themeStorage: "",
     };
   },
-  created(){
+  created() {
     // 在websocket中，注册获取数据的回调函数
-    this.$socket.registerCallBack('trendData',this.getData)
+    this.$socket.registerCallBack("trendData", this.getData);
   },
   mounted() {
     this.initChart();
     // this.getData();
     // 改造，使用websocket获取数据
     this.$socket.send({
-      action:'getData',
-        chartName:"trend",
-        value:'',
-        socketType:'trendData'
-    })
+      action: "getData",
+      chartName: "trend",
+      value: "",
+      socketType: "trendData",
+    });
     window.addEventListener("resize", this.screenAdapter);
     this.screenAdapter();
   },
   destroyed() {
     window.removeEventListener("resize", this.screenAdapter);
-    this.$socket.unRegisterCallBack('trendData')
+    this.$socket.unRegisterCallBack("trendData");
   },
   methods: {
     // 初始化图表实例
     initChart() {
-      this.myChart = this.$echarts.init(this.$refs.sellerChart, "chalk");
+      this.myChart = this.$echarts.init(
+        this.$refs.sellerChart,
+        this.themeStorage
+      );
       // 初始化时候的option
       let initOption = {
-        title:{
-          text:"▎",
-          left:20,
-          top:15
+        title: {
+          text: "▎",
+          left: 20,
+          top: 15,
         },
         xAxis: {
           type: "category",
@@ -73,7 +79,7 @@ export default {
           containLabel: true,
         },
         legend: {
-          top: "20%",
+          top: "15%",
           left: 20,
           icon: "circle",
         },
@@ -84,7 +90,7 @@ export default {
       this.myChart.setOption(initOption);
     },
     // 获取后台数据,并处理数据，更新图表
-     getData(data) {
+    getData(data) {
       // const { data } = await this.$http.get("/trend");
       // console.log(data);
       // 处理数据
@@ -119,17 +125,17 @@ export default {
           textStyle: {
             fontSize: this.titleWidth,
           },
-          top:18 + this.titleWidth/4,
-          left:20 - this.titleWidth/4
+          top: 18 + this.titleWidth / 4,
+          left: 20 - this.titleWidth / 4,
         },
-        legend:{
-          itemWidth:this.titleWidth,
-          itemHeight:this.titleWidth,
-          itemGap:this.titleWidth,
-          textStyle:{
-            fontSize:this.titleWidth/2
-          }
-        }
+        legend: {
+          itemWidth: this.titleWidth,
+          itemHeight: this.titleWidth,
+          itemGap: this.titleWidth,
+          textStyle: {
+            fontSize: this.titleWidth / 1.2,
+          },
+        },
       };
       this.myChart.setOption(adapterOption);
       this.myChart.resize();
@@ -179,11 +185,39 @@ export default {
       return { seriesArr, legendArr };
     },
   },
-  watch:{
-    choiceType(){
+  watch: {
+    choiceType() {
       this.updateChart();
+    },
+    // 主题切换
+    theme() {
+      this.themeStorage = sessionStorage.getItem("theme") || "charlk";
+      // 需要先销毁图表才能有效
+      this.myChart.dispose();
+      this.initChart();
+      this.updateChart();
+      this.screenAdapter();
+    },
+  },
+  computed: {
+    ...mapState({
+      // 主题切换
+      theme: function (state) {
+        // 使用缓存中的主题，避免刷新主题就消失了
+        this.themeStorage = sessionStorage.getItem("theme") || "chalk";
+        // console.log(this.themeStorage);
+        return state.theme;
+      },
+    }),
+    themeStyle(){
+      let css = getThemeCss(this.themeStorage)
+      return {
+        color:css.color,
+        backgroundColor:css.backgroundColor,
+        fontSize: this.titleWidth + 'px' 
+      }
     }
-  }
+  },
 };
 </script>
 

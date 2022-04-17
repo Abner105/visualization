@@ -3,6 +3,8 @@
 </template>
 
 <script>
+import { mapState } from "vuex";
+
 export default {
   data() {
     return {
@@ -10,23 +12,38 @@ export default {
       seriesArr: [],
       curIndex: 0,
       totalPages: 0,
-      timer:null
+      timer: null,
+      themeStorage:'',
     };
+  },
+  created() {
+    this.$socket.registerCallBack("stockData", this.getData);
   },
   mounted() {
     this.initChart();
-    this.getData();
+    // this.getData();
+    // 改造，使用websocket获取数据
+    this.$socket.send({
+      action: "getData",
+      chartName: "stock",
+      value: "",
+      socketType: "stockData",
+    });
     window.addEventListener("resize", this.screenAdapter);
     this.screenAdapter();
   },
   destroyed() {
     window.removeEventListener("resize", this.screenAdapter);
-    clearInterval(this.timer)
+    clearInterval(this.timer);
+    this.$socket.unRegisterCallBack("stockData");
   },
   methods: {
     // 初始化图表实例
     initChart() {
-      this.myChart = this.$echarts.init(this.$refs.srockChart, "chalk");
+      this.myChart = this.$echarts.init(
+        this.$refs.srockChart,
+        this.themeStorage
+      );
       // 初始化时候的option
       let initOption = {
         title: {
@@ -36,14 +53,14 @@ export default {
         },
       };
       this.myChart.setOption(initOption);
-      this.myChart.on('mouseover',()=>{
-        clearInterval(this.timer)
-      })
-      this.myChart.on('mouseout',this.startInterval)
+      this.myChart.on("mouseover", () => {
+        clearInterval(this.timer);
+      });
+      this.myChart.on("mouseout", this.startInterval);
     },
     // 获取后台数据,并处理数据，更新图表
-    async getData() {
-      const { data } = await this.$http.get("/stock");
+    async getData(data) {
+      // const { data } = await this.$http.get("/stock");
       // 处理数据
       const centerArr = [
         ["18%", "40%"],
@@ -67,7 +84,7 @@ export default {
           hoverAnimation: false,
           data: [
             {
-              name: `${item.name}\n${item.sales}`,
+              name: `${item.name}\n\n${item.sales}`,
               value: item.sales,
               itemStyle: {
                 color: {
@@ -126,7 +143,7 @@ export default {
         radius: [chartWidth * 2.5, chartWidth * 3],
         label: {
           textStyle: {
-            fontSize: chartWidth / 2,
+            fontSize: chartWidth / 1.3,
           },
         },
       };
@@ -148,6 +165,27 @@ export default {
         if (this.curIndex >= this.totalPages) this.curIndex = 0;
         this.updateChart();
       }, 3000);
+    },
+  },
+  computed: {
+    ...mapState({
+      // 主题切换
+      theme: function (state) {
+        // 使用缓存中的主题，避免刷新主题就消失了
+        this.themeStorage = sessionStorage.getItem("theme") || "chalk";
+        return state.theme;
+      },
+    }),
+  },
+  watch: {
+    // 主题切换
+    theme() {
+      this.themeStorage = sessionStorage.getItem("theme") || "charlk";
+      // 需要先销毁图表才能有效
+      this.myChart.dispose();
+      this.initChart();
+      this.updateChart();
+      this.screenAdapter();
     },
   },
 };

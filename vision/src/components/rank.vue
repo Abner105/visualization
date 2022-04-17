@@ -3,6 +3,7 @@
 </template>
 
 <script>
+import { mapState } from "vuex";
 export default {
   data() {
     return {
@@ -12,17 +13,29 @@ export default {
       timer: null,
       nameArr: [],
       valueArr: [],
+      themeStorage:''
     };
+  },
+  created() {
+    this.$socket.registerCallBack("rankData", this.getData);
   },
   mounted() {
     this.initChart();
-    this.getData();
+    // this.getData();
+    // 改造，使用websocket获取数据
+    this.$socket.send({
+      action: "getData",
+      chartName: "rank",
+      value: "",
+      socketType: "rankData",
+    });
     window.addEventListener("resize", this.screenAdapter);
     this.screenAdapter();
   },
   destroyed() {
     window.removeEventListener("resize", this.screenAdapter);
     clearInterval(this.timer);
+    this.$socket.unRegisterCallBack("rankData");
   },
   methods: {
     // 初始化图表实例
@@ -32,12 +45,12 @@ export default {
         ["#2E72BF", "#23E5E5"],
         ["#5052EE", "#AB6EE5"],
       ];
-      this.myChart = this.$echarts.init(this.$refs.rankChart, "chalk");
+      this.myChart = this.$echarts.init(this.$refs.rankChart, this.themeStorage);
       // 初始化时候的option
       let initOption = {
         title: {
-          text: "▎商家分布",
-          top: 40,
+          text: "▎地区销量排行",
+          top: 20,
           left: 20,
         },
         grid: {
@@ -93,8 +106,8 @@ export default {
       });
     },
     // 获取后台数据,并处理数据，更新图表
-    async getData() {
-      const { data } = await this.$http.get("/rank");
+    async getData(data) {
+      // const { data } = await this.$http.get("/rank");
       data.sort((a, b) => {
         return b.value - a.value;
       });
@@ -133,7 +146,7 @@ export default {
       let adapterOption = {
         title: {
           textStyle: {
-            fontSize: chartWidth,
+            fontSize: chartWidth / 1.2,
           },
         },
         series: [
@@ -159,6 +172,23 @@ export default {
         }
         this.updateChart();
       }, 3000);
+    },
+  },
+  computed: {
+    ...mapState({
+      theme: function (state) {
+        this.themeStorage = sessionStorage.getItem("theme") || "chalk";
+        return state.theme;
+      },
+    }),
+  },
+  watch: {
+    theme() {
+      this.themeStorage = sessionStorage.getItem("theme") || "chalk";
+      this.myChart.dispose();
+      this.initChart();
+      this.updateChart();
+      this.screenAdapter();
     },
   },
 };

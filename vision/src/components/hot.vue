@@ -1,13 +1,27 @@
 <template>
   <div class="chart">
     <div class="chart" ref="hotChart"></div>
-    <span class="left" @click="exchange('left')" :style="{fontSize:chartWidth+'px'}">〈</span>
-    <span class="right" @click="exchange('right')" :style="{fontSize:chartWidth+'px'}">〉</span>
-    <div class="subtitle" :style="{fontSize:chartWidth/2+'px'}">{{ subTitle[curIndex] }}</div>
+    <span
+      class="left"
+      @click="exchange('left')"
+      :style="themeStyle"
+      >〈</span
+    >
+    <span
+      class="right"
+      @click="exchange('right')"
+      :style="themeStyle"
+      >〉</span
+    >
+    <div class="subtitle" :style="themeStyle">
+      {{ subTitle[curIndex] }}
+    </div>
   </div>
 </template>
 
 <script>
+import { mapState } from "vuex";
+import {getThemeCss} from '../utils/theme_utils'
 export default {
   data() {
     return {
@@ -16,22 +30,34 @@ export default {
       curIndex: 0,
       legendData: [],
       subTitle: [],
-      chartWidth:0
+      chartWidth: 0,
+      themeStorage: "chalk",
     };
+  },
+  created() {
+    this.$socket.registerCallBack("hotData", this.getData);
   },
   mounted() {
     this.initChart();
-    this.getData();
+    // this.getData();
+    // 改造，使用websocket获取数据
+    this.$socket.send({
+      action: "getData",
+      chartName: "hotproduct",
+      value: "",
+      socketType: "hotData",
+    });
     window.addEventListener("resize", this.screenAdapter);
     this.screenAdapter();
   },
   destroyed() {
     window.removeEventListener("resize", this.screenAdapter);
+    this.$socket.unRegisterCallBack("hotData");
   },
   methods: {
     // 初始化图表实例
     initChart() {
-      this.myChart = this.$echarts.init(this.$refs.hotChart, "chalk");
+      this.myChart = this.$echarts.init(this.$refs.hotChart, this.themeStorage);
       // 初始化时候的option
       let initOption = {
         title: {
@@ -43,26 +69,26 @@ export default {
           top: "15%",
           icon: "circle",
         },
-        tooltip:{
-          show:true,
-          formatter:arg=>{
-            let data = arg.data.children
-            let res = ""
-            let totalValue = data.reduce((pre,ch)=>pre+ch.value,0)
-            data.forEach(ch => {
-              res+=`
-              ${ch.name} : ${(ch.value/totalValue*100).toFixed(2)}%
+        tooltip: {
+          show: true,
+          formatter: (arg) => {
+            let data = arg.data.children;
+            let res = "";
+            let totalValue = data.reduce((pre, ch) => pre + ch.value, 0);
+            data.forEach((ch) => {
+              res += `
+              ${ch.name} : ${((ch.value / totalValue) * 100).toFixed(2)}%
               <br>
-              `
+              `;
             });
-            return res
-          }
+            return res;
+          },
         },
         series: [
           {
             type: "pie",
             radius: "50%",
-            center:["50%","53%"],
+            center: ["50%", "53%"],
             label: {
               show: false,
             },
@@ -81,9 +107,9 @@ export default {
       this.myChart.setOption(initOption);
     },
     // 获取后台数据,并处理数据，更新图表
-    async getData() {
-      const { data } = await this.$http.get("/hotproduct");
-      console.log(data);
+    async getData(data) {
+      // const { data } = await this.$http.get("/hotproduct");
+      // console.log(data);
       // 处理数据
       for (let i = 0; i < data.length; i++) {
         const item = data[i];
@@ -115,26 +141,26 @@ export default {
       // 利用盒子宽度来算出柱子宽度等
       this.chartWidth = (this.$refs.hotChart.offsetWidth / 100) * 3.6;
       let adapterOption = {
-        title:{
-          textStyle:{
-            fontSize:this.chartWidth
-          }
+        title: {
+          textStyle: {
+            fontSize: this.chartWidth,
+          },
         },
-        legend:{
-          itemWidth:this.chartWidth/2,
-          itemHeight:this.chartWidth/2,
-          itemGap:this.chartWidth/2,
-          textStyle:{
-            fontSize:this.chartWidth/2
-          }
+        legend: {
+          itemWidth: this.chartWidth,
+          itemHeight: this.chartWidth,
+          itemGap: this.chartWidth,
+          textStyle: {
+            fontSize: this.chartWidth / 1.2,
+          },
         },
-        series:[
+        series: [
           {
-            label:{
-              fontSize:this.chartWidth/2
-            }
-          }
-        ]
+            label: {
+              fontSize: this.chartWidth / 2,
+            },
+          },
+        ],
       };
       this.myChart.setOption(adapterOption);
       this.myChart.resize();
@@ -143,15 +169,43 @@ export default {
     exchange(type) {
       switch (type) {
         case "left":
-          this.curIndex--
-          if(this.curIndex<0)this.curIndex = this.allData.length-1
+          this.curIndex--;
+          if (this.curIndex < 0) this.curIndex = this.allData.length - 1;
           break;
         case "right":
-          this.curIndex++
-          if(this.curIndex>this.allData.length-1) this.curIndex=0
+          this.curIndex++;
+          if (this.curIndex > this.allData.length - 1) this.curIndex = 0;
           break;
       }
-      this.updateChart()
+      this.updateChart();
+    },
+  },
+  computed: {
+    ...mapState({
+      // 主题切换
+      theme: function (state) {
+        // 使用缓存中的主题，避免刷新主题就消失了
+        this.themeStorage = sessionStorage.getItem("theme") || "chalk";
+        return state.theme;
+      },
+    }),
+    themeStyle(){
+      let css = getThemeCss(this.themeStorage)
+      return {
+        color:css.color,
+        fontSize: this.titleWidth + 'px' 
+      }
+    }
+  },
+  watch: {
+    // 主题切换
+    theme() {
+      this.themeStorage = sessionStorage.getItem("theme") || "charlk";
+      // 需要先销毁图表才能有效
+      this.myChart.dispose();
+      this.initChart();
+      this.updateChart();
+      this.screenAdapter();
     },
   },
 };
@@ -161,7 +215,7 @@ export default {
 span {
   color: #fff;
   position: absolute;
-  z-index: 102;
+  z-index: 12;
   top: 50%;
   transform: translateY(-50%);
   cursor: pointer;
@@ -175,7 +229,7 @@ span {
 .subtitle {
   color: #fff;
   position: absolute;
-  z-index: 100;
+  z-index: 10;
   bottom: 10%;
   right: 20%;
 }

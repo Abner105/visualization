@@ -3,6 +3,7 @@
 </template>
 
 <script>
+import { mapState } from "vuex";
 export default {
   data() {
     return {
@@ -12,23 +13,35 @@ export default {
       curIndex: 0,
       totalIndex: 0,
       timer: null,
+      themeStorage:''
     };
+  },
+  created() {
+    this.$socket.registerCallBack("sellerData", this.getData);
   },
   mounted() {
     this.initChart();
-    this.getData();
+    // this.getData();
+    // 改造，使用websocket获取数据
+    this.$socket.send({
+      action: "getData",
+      chartName: "seller",
+      value: "",
+      socketType: "sellerData",
+    });
     window.addEventListener("resize", this.screenAdapter);
     this.screenAdapter();
   },
   // 组件销毁，清空定时器
   destroyed() {
     clearInterval(this.timer);
-    window.removeEventListener("resize",this.screenAdapter)
+    window.removeEventListener("resize", this.screenAdapter);
+    this.$socket.unRegisterCallBack("sellerData");
   },
   methods: {
     // 初始化图表实例
     initChart() {
-      this.myChart = this.$echarts.init(this.$refs.sellerChart, "chalk");
+      this.myChart = this.$echarts.init(this.$refs.sellerChart, this.themeStorage);
       // 初始化时候的option
       let initOption = {
         title: {
@@ -102,8 +115,8 @@ export default {
       });
     },
     // 获取后台数据,并处理数据，更新图表
-    async getData() {
-      const { data } = await this.$http.get("/seller");
+    getData(data) {
+      // const { data } = await this.$http.get("/seller");
       // 处理数据，一页展示5条数据
       data.sort((a, b) => a.value - b.value);
       let name = data.map((item) => item.name);
@@ -174,6 +187,27 @@ export default {
       };
       this.myChart.setOption(adapterOption);
       this.myChart.resize();
+    },
+  },
+  computed: {
+    ...mapState({
+      // 主题切换
+      theme: function (state) {
+        // 使用缓存中的主题，避免刷新主题就消失了
+        this.themeStorage = sessionStorage.getItem("theme") || "chalk";
+        return state.theme;
+      },
+    }),
+  },
+  watch: {
+    // 主题切换
+    theme() {
+      this.themeStorage = sessionStorage.getItem("theme") || "charlk";
+      // 需要先销毁图表才能有效
+      this.myChart.dispose();
+      this.initChart();
+      this.updateChart();
+      this.screenAdapter();
     },
   },
 };

@@ -5,6 +5,7 @@
 <script>
 import axios from "axios";
 import { getProvinceMapInfo } from "../utils/map_utils";
+import { mapState } from "vuex";
 export default {
   data() {
     return {
@@ -12,21 +13,33 @@ export default {
       seriesArr: [],
       legendArr: [],
       registedMap: [], //  所有注册过的地图省份
+      themeStorage:''
     };
+  },
+  created() {
+    this.$socket.registerCallBack("mapData", this.getData);
   },
   mounted() {
     this.initChart();
-    this.getData();
+    // this.getData();
+    // 改造，使用websocket获取数据
+    this.$socket.send({
+      action: "getData",
+      chartName: "map",
+      value: "",
+      socketType: "mapData",
+    });
     window.addEventListener("resize", this.screenAdapter);
     this.screenAdapter();
   },
   destroyed() {
     window.removeEventListener("resize", this.screenAdapter);
+    this.$socket.unRegisterCallBack("mapData");
   },
   methods: {
     // 初始化图表实例
     async initChart() {
-      this.myChart = this.$echarts.init(this.$refs.mapChart, "chalk");
+      this.myChart = this.$echarts.init(this.$refs.mapChart, this.themeStorage);
       // 获取静态文件中的数据
       let { data } = await axios.get(
         "http://localhost:8999/static/map/china.json"
@@ -77,8 +90,8 @@ export default {
       });
     },
     // 获取后台数据,并处理数据，更新图表
-    async getData() {
-      const { data } = await this.$http.get("/map");
+    async getData(data) {
+      // const { data } = await this.$http.get("/map");
       // 处理数据
       this.seriesArr = data.map((item) => {
         return {
@@ -87,7 +100,7 @@ export default {
           data: item.children,
           coordinateSystem: "geo",
           rippleEffect: {
-            scale: 5,
+            scale: 7,
             brushType: "stroke",
           },
         };
@@ -114,15 +127,15 @@ export default {
       let adapterOption = {
         title: {
           textStyle: {
-            fontSize: chartWidth,
+            fontSize: chartWidth / 1.2,
           },
         },
         legend: {
-          itemWidth: chartWidth / 2,
-          itemHeight: chartWidth / 2,
-          itemGap: chartWidth / 2,
+          itemWidth: chartWidth / 1.5,
+          itemHeight: chartWidth / 1.5,
+          itemGap: chartWidth / 1.5,
           textStyle: {
-            fontSize: chartWidth / 2,
+            fontSize: chartWidth / 1.5,
           },
         },
       };
@@ -137,6 +150,27 @@ export default {
         },
       };
       this.myChart.setOption(changeOption);
+    },
+  },
+  computed: {
+    ...mapState({
+      // 主题切换
+      theme: function (state) {
+        // 使用缓存中的主题，避免刷新主题就消失了
+        this.themeStorage = sessionStorage.getItem("theme") || "chalk";
+        return state.theme;
+      },
+    }),
+  },
+  watch: {
+    // 主题切换
+    theme() {
+      this.themeStorage = sessionStorage.getItem("theme") || "charlk";
+      // 需要先销毁图表才能有效
+      this.myChart.dispose();
+      this.initChart();
+      this.updateChart();
+      this.screenAdapter();
     },
   },
 };

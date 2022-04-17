@@ -12,13 +12,21 @@ const StockPage = ()=>import('../views/StockPage')
 // import MapPage from "../views/MapPage"
 // import RankPage from "../views/RankPage"
 // import HotPage from "../views/HotPage"
-
+const ScreenPage= ()=>import('../views/ScreenPage')
 
 
 
 Vue.use(VueRouter)
 
 const routes = [
+  {
+    path:'/',
+    redirect:'/screen'
+  },
+  {
+    path:'/screen',
+    component:ScreenPage
+  },
   {
     path: '/sellerpage',
     component: SellerPage
